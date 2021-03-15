@@ -1,0 +1,67 @@
+- name: se_s
+  become: true
+  hosts: all
+  remote_user: padmin
+
+  tasks:
+    - include_vars: vars.yml
+    - name: Creates directory
+      file:
+        path: /data/testpatroni/11/data/
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: 0700
+    
+    - name: Creates directory
+      file:
+        path: /home/padmin/testdeployment/patroni_{{ my_host_alias }}
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: 0700 
+#
+#    - copy:
+#        src: /home/ogn/denemeler/ansiblepostgresql/patroni/patroni_base/
+#        dest: /home/padmin/testdeployment/patroni/
+#        owner: 1000
+#        group: 1000
+#        mode: 0700       
+#
+    - name: create compose
+      copy:
+        content: "
+        PATRONI_SCOPE=test\n
+        PATRONI_ETCD_HOSTS='{{etcd_1_ip}}:{{etcd_2_port}}','{{etcd_2_ip}}:{{etcd_2_port}}','{{etcd_3_ip}}:{{etcd_2_port}}'\n
+        PATRONI_RESTAPI_USERNAME=admin\n
+        PATRONI_RESTAPI_PASSWORD=delijojux01!?%\n
+        PATRONI_SUPERUSER_USERNAME=postgres\n
+        PATRONI_SUPERUSER_PASSWORD=delijojux01!?%\n
+        PATRONI_REPLICATION_USERNAME=replicator\n
+        PATRONI_REPLICATION_PASSWORD=delijojux01!?%\n
+        PATRONI_admin_PASSWORD=delijojux01!?%\n
+        PATRONI_admin_OPTIONS=createdb,createrole\n
+        PATRONI_POSTGRESQL_DATA_DIR=/data/testpatroni/11/data/\n
+        PATRONI_POSTGRESQL_CONNECT_ADDRESS={{ ansible_host }}:5434\n
+        PATRONI_POSTGRESQL_LISTEN={{ ansible_host }}:5434\n
+        PATRONI_RESTAPI_CONNECT_ADDRESS={{ ansible_host }}:8009\n
+        PATRONI_RESTAPI_LISTEN={{ ansible_host }}:8009\n
+        ETCDCTL_ENDPOINTS=http://{{etcd_1_ip}}:{{etcd_2_port}},http://{{etcd_2_ip}}:{{etcd_2_port}},http://{{etcd_3_ip}}:{{etcd_2_port}}\n"
+        dest: "/home/padmin/testdeployment/patroni_{{ my_host_alias }}/patroni.env"  
+
+    - name: create compose
+      copy:
+        content: "
+        version: '2.2'\n
+        services:\n
+        \ \ patroni_{{ my_host_alias }}:\n
+        \ \ \ \ image: patroni-base-test\n
+        \ \ \ \ shm_size: 10gb\n
+        \ \ \ \ network_mode: \"host\"\n
+        \ \ \ \ env_file: patroni.env\n
+        \ \ \ \ environment:\n
+        \ \ \ \ \ PATRONI_NAME: patroni_{{ my_host_alias }}\n
+        \ \ \ \ volumes:\n
+        \ \ \ \ \ - /data/testpatroni/11/data/:/data/testpatroni/11/data/\n
+        \ \ \ \ \ - /wal/kucukpatroni/11/archive/:/wal/kucukpatroni/11/archive/\n|"
+        dest: "/home/padmin/testdeployment/patroni_{{ my_host_alias }}/docker-compose.yml"

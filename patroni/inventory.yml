@@ -1,0 +1,2 @@
+postgresdb12  ansible_host=172.18.237.29 my_host_alias=test_01 
+postgresdb13  ansible_host=172.18.237.30 my_host_alias=test_02

@@ -1,0 +1,59 @@
+- name: se_s
+  become: true
+  hosts: all
+  remote_user: padmin
+
+  tasks:
+    - include_vars: vars.yml
+    - name: Creates directory
+      file:
+        path: /data/etcd_{{ my_host_alias }}
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: 0700
+       
+    - name: Creates directory
+      file:
+        path: /home/padmin/testdeployment
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: 0700
+
+    - name: Creates directory
+      file:
+        path: /home/padmin/testdeployment/{{ my_host_alias }}_etcd
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: 0700    
+
+    - name: create compose
+      copy:
+        content: "
+        ETCD_LISTEN_PEER_URLS=http://0.0.0.0:{{ etcd_1_port }}\n
+        ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:{{ etcd_2_port }}\n
+        ETCD_INITIAL_CLUSTER=etcd_{{ etcd_1_name }}=http://{{ etcd_1_ip }}:{{etcd_1_port}},etcd_{{ etcd_2_name }}=http://{{ etcd_2_ip }}:{{ etcd_1_port }},etcd_{{ etcd_3_name }}=http://{{ etcd_3_ip }}:{{ etcd_1_port }}\n
+        ETCD_INITIAL_CLUSTER_STATE=new\n
+        ETCDCTL_API=2\n
+        ETCD_INITIAL_CLUSTER_TOKEN=test-etcd\n"
+        dest: "/home/padmin/testdeployment/{{ my_host_alias }}_etcd/etcd.env"  
+
+    - name: create compose
+      copy:
+        content: "
+        version: '2'\n
+        services:\n
+        \ \ etcd_{{ my_host_alias }}:\n
+        \ \ \ \ image: quay.io/coreos/etcd:v3.4.0\n
+        \ \ \ \ env_file: etcd.env\n
+        \ \ \ \ container_name: etcd_{{ my_host_alias }}\n
+        \ \ \ \ network_mode: \"host\"\n
+        \ \ \ \ command: etcd -name etcd_{{ my_host_alias }} -initial-advertise-peer-urls http://{{ ansible_host }}:{{etcd_1_port}} -advertise-client-urls http://{{ ansible_host }}:{{ etcd_2_port }} --enable-v2=true --data-dir=/etcd1-data\n
+        \ \ \ \ volumes:\n
+        \ \ \ \ \ - /etcd-data/etcd_{{ my_host_alias }}/:/etcd1-data\n
+        \ \ \ \ ports:\n
+        \ \ \ \ \ - {{ etcd_1_port }}:{{ etcd_1_port }}\n
+        \ \ \ \ \ - {{ etcd_2_port }}:{{ etcd_2_port }}\n"
+        dest: "/home/padmin/testdeployment/{{ my_host_alias }}_etcd/docker-compose.yml"

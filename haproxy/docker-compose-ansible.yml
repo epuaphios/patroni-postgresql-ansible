@@ -1,0 +1,69 @@
+- name: se_s
+  become: true
+  hosts: all
+  remote_user: padmin
+
+  tasks:
+    
+    - name: Creates directory
+      file:
+        path: /home/padmin/testdeployement/haproxy/
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: 0700
+
+   - name: create compose
+      copy:
+        content: "
+        global\n
+        	maxconn 500\n
+        
+        defaults\n
+        	log	global\n
+        	mode	tcp\n
+        	retries 2\n
+        	timeout client 300m\n
+        	timeout connect 4s\n
+        	timeout server 300m\n
+        	timeout check 5s\n
+        
+        listen stats\n
+        	mode http\n
+        	bind *:7000\n
+        	stats enable\n
+        	stats uri /\n
+        
+        listen master\n
+        	bind *:5000\n
+        	option httpchk OPTIONS /master\n
+        	http-check expect status 200\n
+        	default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions\n
+        	server patroni1 172.18.237.25:5434 maxconn 500 check port 8009\n
+        	server patroni2 172.18.237.26:5434 maxconn 500 check port 8009\n
+        
+        listen replicas\n
+        	bind *:5001\n
+        	option httpchk OPTIONS /replica\n
+        	http-check expect status 200\n
+        	default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions\n
+        	server patroni1 172.18.237.25:5434 maxconn 500 check port 8009\n
+        	server patroni2 172.18.237.26:5434 maxconn 500 check port 8009\n"
+              dest: "/home/padmin/testdeployement/haproxy/haproxy.cfg"  
+
+    - name: create compose
+      copy:
+        content: "
+        version: '2.2'\n
+        services:\n
+        \ \ haproxy_{{ ansible_hostname }}:\n
+        \ \ \ \ image: haproxy\n
+        \ \ \ \ container_name: haproxy_{{ ansible_hostname }}\n
+        \ \ \ \ volumes:\n
+        \ \ \ \ \ - /var/run/docker.sock:/var/run/docker.sock\n
+        \ \ \ \ \ - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg\n
+        \ \ \ \ ports:\n
+        \ \ \ \ \ - 5016:5000\n
+        \ \ \ \ \ - 5017:5001\n
+        \ \ \ \ \ - 7009:7000\n"
+        dest: "/home/padmin/testdeployement/haproxy/docker-compose.yml"

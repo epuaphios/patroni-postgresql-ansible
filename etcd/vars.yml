@@ -1,0 +1,8 @@
+etcd_1_ip: 172.18.237.29 
+etcd_2_ip: 172.18.237.30
+etcd_3_ip: 172.18.237.30
+etcd_1_port: 2388
+etcd_2_port: 2371
+etcd_1_name: test_01
+etcd_2_name: test_02
+etcd_3_name: test_03
